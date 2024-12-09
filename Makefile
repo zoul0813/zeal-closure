@@ -8,7 +8,7 @@
 ##
 
 # Specify the name of the output binary.
-BIN=lc.bin
+BIN=closure.bin
 
 # Specify the directory containing the source files.
 # INPUT_DIR=src
