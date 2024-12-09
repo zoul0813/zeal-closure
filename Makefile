@@ -57,7 +57,7 @@ BIN=closure.bin
 # ZVB_LDFLAGS=-k $(ZVB_SDK_PATH)/lib/ -l zvb_gfx
 
 # ZGDK has sound enabled by default, uncomment this to disable sound and reduce your binary size
-ENABLE_GFX=1
+ENABLE_GFX=0
 ENABLE_SOUND=0
 ENABLE_CRC32=0
 # ENABLE_CONIO=1
@@ -98,8 +98,8 @@ ifeq ($(EMULATOR), 1)
 ZOS_CFLAGS += -DEMULATOR=1
 endif
 
-include $(ZGDK_PATH)/base_sdcc.mk
-# include $(ZVB_SDK_PATH)/sdcc/base_sdcc.mk
+# include $(ZGDK_PATH)/base_sdcc.mk
+include $(ZVB_SDK_PATH)/sdcc/base_sdcc.mk
 
 ## Add your own rules here
 

@@ -7,6 +7,7 @@ Siege is a port of [Blockade](https://en.wikipedia.org/wiki/Blockade_(video_game
 
 ## Controls
 
-* Insert Coin - SNES Select or <kbd>'</kbd>
-* Start Game - SNES Start or <kbk>Enter</kbd>
-* Move - SNES D-Pad or Arrows
+* Insert Coin - SNES Y or <kbd>J</kbd>
+* Start Game - SNES B or <kbk>K</kbd> or <kbk>Space</kbd>
+* Move - SNES D-Pad or Arrows/WASD
+* Quit - SNES Select or <kbd>'</kbk> or <kbk>Esc</kbd>
