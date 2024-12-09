@@ -1,14 +1,37 @@
+#include <stdio.h>
 #include <string.h>
 #include <zos_errors.h>
 #include <zos_video.h>
+#include <zos_vfs.h>
 #include <zos_time.h>
 #include <zvb_gfx.h>
 #include <zgdk.h>
-#include "conio.h"
+// #include "conio.h"
+
+#ifndef __SDCC_VERSION_MAJOR
+// intellisense trick for vscode
+#define __at(addr)
+#define __sfr
+#define __banked
+#endif
+
+#define SCREEN_COL80_WIDTH  80
+#define SCREEN_COL80_HEIGHT 40
 
 typedef unsigned char byte;
 typedef signed char sbyte;
 typedef unsigned short word;
+
+// uint8_t *text_layer0 = (uint8_t *) 0x0000;
+// uint8_t *text_layer1 = (uint8_t *) 0x1000;
+
+__sfr __banked __at(0x9d) vid_ctrl_status;
+const __sfr __banked __at(0xF0) mmu_page0_ro;
+__sfr __at(0xF0) mmu_page0;
+byte __at(0x0000) cellram[SCREEN_COL80_HEIGHT][SCREEN_COL80_WIDTH];
+byte __at(0x1000) pallram[SCREEN_COL80_HEIGHT][SCREEN_COL80_WIDTH];
+unsigned char SCREEN[SCREEN_COL80_HEIGHT][SCREEN_COL80_WIDTH]; // screen buffer for getch/putch
+uint8_t frames = 0;
 
 // PLATFORM DEFINITION
 
@@ -25,8 +48,8 @@ typedef unsigned short word;
 // byte __at (0xe000) cellram[28][32];
 // byte __at (0xe800) tileram[256][8];
 
-uint16_t input1 = 0;
 uint8_t palette;
+uint16_t input1 = 0;
 #define LEFT1   (input1 & BUTTON_LEFT)
 #define RIGHT1  (input1 & BUTTON_RIGHT)
 #define UP1     (input1 & BUTTON_UP)
@@ -35,8 +58,6 @@ uint8_t palette;
 #define START1  (input1 & BUTTON_START)
 // #define START2  (input2 & 0x20)
 #define COIN1   (input1 & BUTTON_SELECT)
-
-unsigned char SCREEN[80 * 40]; // screen buffer for getch/putch
 
 // GAME DATA
 
@@ -63,11 +84,8 @@ byte frames_per_move;
 
 // GAME CODE
 
-void main(void);
-
-
-#define INIT_MAGIC 0xdeadbeef
-static uint32_t is_initialized = INIT_MAGIC;
+// #define INIT_MAGIC 0xdeadbeef
+// static uint32_t is_initialized = INIT_MAGIC;
 
 ////////
 
@@ -86,7 +104,8 @@ void delay(byte msec) {
   msleep(msec);
 }
 
-#define PE(fg,bg) (((fg)<<5) | ((bg)<<1))
+// #define PE(fg,bg) (((fg)<<5) | ((bg)<<1))
+#define PE(fg, bg) ((bg << 4) | (fg & 0xF))
 
 // const byte __at (0x4000) color_prom[32] = {
 //   PE(7,0),PE(3,0),PE(1,0),PE(3,0),PE(6,0),PE(3,0),PE(2,0),PE(6,0),
@@ -100,23 +119,47 @@ void delay(byte msec) {
 
 #define CHAR(ch) ch
 
-// void clrscr(void) {
-//   memset(cellram, CHAR(' '), sizeof(cellram));
-// }
+void clrscr(void) {
+  uint8_t mmu_page_current = mmu_page0_ro;
+  __asm__("di");
+  mmu_page0 = VID_MEM_PHYS_ADDR_START >> 14;
 
-byte getch(byte x, byte y) {
-  return SCREEN[(y * 80) + x];
+  // memset(cellram, CHAR(' '), sizeof(cellram));
+  for(uint8_t y = 0; y < SCREEN_COL80_HEIGHT; y++) {
+    for(uint8_t x = 0; x < SCREEN_COL80_WIDTH; x++) {
+      SCREEN[y][x] = ' ';
+      cellram[y][x] = ' ';
+      pallram[y][x] = (TEXT_COLOR_BLACK << 4) | (TEXT_COLOR_WHITE & 0x0F);
+    }
+  }
+
+  mmu_page0 = mmu_page_current;
+  __asm__("ei");
 }
 
-void putch(byte x, byte y, byte attr) {
-  // cellram[x][y] = attr;
-  SCREEN[(y * 80) + x] = attr;
-  cputcxy(x, y, attr);
+byte getch(byte x, byte y) {
+  return SCREEN[y][x];
+}
+
+void putch(byte x, byte y, byte attr, byte clr) {
+  SCREEN[y][x] = attr;
+
+  uint8_t mmu_page_current = mmu_page0_ro;
+  __asm__("di");
+  mmu_page0 = VID_MEM_PHYS_ADDR_START >> 14;
+
+  cellram[y][x] = attr;
+  pallram[y][x] = clr;
+  // text_layer0[(y * SCREEN_COL80_WIDTH) + x ] = attr;
+
+  // cputcxy(x, y, attr);
+  mmu_page0 = mmu_page_current;
+  __asm__("ei");
 }
 
 void putstring(byte x, byte y, const char* string) {
   while (*string) {
-    putch(x++, y, CHAR(*string++));
+    putch(x++, y, CHAR(*string++), PE(TEXT_COLOR_RED, TEXT_COLOR_BLACK));
   }
 }
 
@@ -129,17 +172,18 @@ const char BOX_CHARS[8] = { 218, 191, 192, 217, 196, 196, 179, 179 };
 
 void draw_box(byte x, byte y, byte x2, byte y2, const char* chars) {
   byte x1 = x;
-  putch(x, y, chars[0]);
-  putch(x2, y, chars[1]);
-  putch(x, y2, chars[2]);
-  putch(x2, y2, chars[3]);
+  byte clr = PE(TEXT_COLOR_GREEN, TEXT_COLOR_BLACK);
+  putch(x, y, chars[0], clr);
+  putch(x2, y, chars[1], clr);
+  putch(x, y2, chars[2], clr);
+  putch(x2, y2, chars[3], clr);
   while (++x < x2) {
-    putch(x, y, chars[5]);
-    putch(x, y2, chars[4]);
+    putch(x, y, chars[5], clr);
+    putch(x, y2, chars[4], clr);
   }
   while (++y < y2) {
-    putch(x1, y, chars[6]);
-    putch(x2, y, chars[7]);
+    putch(x1, y, chars[6], clr);
+    putch(x2, y, chars[7], clr);
   }
 }
 
@@ -149,13 +193,13 @@ void draw_playfield(void) {
   putstring(72,0,"PLAYER 2");
   putstring(0,1,"SCORE:");
   putstring(72,1,"SCORE:");
-  putch(7,30,CHAR(players[0].score + '0'));
-  putch(27,30,CHAR(players[1].score + '0'));
+  putch(7,1,CHAR(players[0].score + '0'), PE(TEXT_COLOR_YELLOW, TEXT_COLOR_BLACK));
+  putch(79,1,CHAR(players[1].score + '0'), PE(TEXT_COLOR_YELLOW, TEXT_COLOR_BLACK));
   if (attract) {
     if (credits) {
       putstring(32,3,"PRESS START");
       putstring(32,39,"CREDITS ");
-      putch(9+8, 0, (credits>9?9:credits)+CHAR('0'));
+      putch(32+8, 39, (credits>9?9:credits)+CHAR('0'), PE(TEXT_COLOR_YELLOW, TEXT_COLOR_BLACK));
     } else {
       putstring(32,3,"GAME OVER");
       putstring(32,39,"INSERT COIN");
@@ -163,7 +207,7 @@ void draw_playfield(void) {
   }
 }
 
-typedef enum { D_RIGHT, D_DOWN, D_LEFT, D_UP } dir_t;
+typedef enum { D_RIGHT, D_UP, D_LEFT, D_DOWN } dir_t;
 const sbyte DIR_X[4] = { 1, 0, -1, 0 };
 const sbyte DIR_Y[4] = { 0, -1, 0, 1 };
 
@@ -185,11 +229,13 @@ void reset_players(void) {
 }
 
 void draw_player(Player* p) {
-  putch(p->x, p->y, p->head_attr);
+  byte clr = PE(TEXT_COLOR_BLUE, TEXT_COLOR_BLACK);
+  putch(p->x, p->y, p->head_attr, clr);
 }
 
 void move_player(Player* p) {
-  putch(p->x, p->y, p->tail_attr);
+  byte clr = PE(TEXT_COLOR_CYAN, TEXT_COLOR_BLACK);
+  putch(p->x, p->y, p->tail_attr, clr);
   p->x += DIR_X[p->dir];
   p->y += DIR_Y[p->dir];
   if (getch(p->x, p->y) != CHAR(' '))
@@ -231,19 +277,24 @@ void ai_control(Player* p) {
     ai_try_dir(p, dir+1, 0);
     ai_try_dir(p, dir-1, 0);
   } else {
-    ai_try_dir(p, dir-1, 0) && ai_try_dir(p, dir-1, 1+(rand() & 3));
-    ai_try_dir(p, dir+1, 0) && ai_try_dir(p, dir+1, 1+(rand() & 3));
+    if(ai_try_dir(p, dir-1, 0)) ai_try_dir(p, dir-1, 1+(rand() & 3));
+    if(ai_try_dir(p, dir+1, 0)) ai_try_dir(p, dir+1, 1+(rand() & 3));
     ai_try_dir(p, dir, rand() & 3);
   }
 }
 
 void slide_right(void) {
   byte j;
+  uint8_t mmu_page_current = mmu_page0_ro;
+  __asm__("di");
+  mmu_page0 = VID_MEM_PHYS_ADDR_START >> 14;
   for (j=0; j<32; j++) {
     // TODO: move data on screen.... but from where to where? what is cellram?
     // memmove(&cellram[1], &cellram[0], sizeof(cellram)-sizeof(cellram[0]));
     // memset(&cellram[0], 0, sizeof(cellram[0]));
   }
+  mmu_page0 = mmu_page_current;
+  __asm__("ei");
 }
 
 void flash_colliders(void) {
@@ -268,8 +319,13 @@ void flash_colliders(void) {
 void make_move(void) {
   byte i;
   for (i=0; i<frames_per_move; i++) {
+    input1 = keyboard_read();
+    if(COIN1) credits++;
+
+    gfx_wait_vblank(NULL);
     human_control(&players[0]);
-    delay(10);
+    gfx_wait_end_vblank(NULL);
+    // delay(10);
   }
   ai_control(&players[0]);
   ai_control(&players[1]);
@@ -298,9 +354,9 @@ void declare_winner(byte winner) {
   }
   putstring(10,16,"WINNER:");
   putstring(10,13,"PLAYER ");
-  putch(10+7, 13, CHAR('1')+winner);
+  putch(10+7, 13, CHAR('1')+winner, PE(TEXT_COLOR_MAGENTA, TEXT_COLOR_BLACK));
   delay(250);
-  slide_right();
+  // slide_right();
   attract = 1;
 }
 
@@ -354,21 +410,42 @@ void attract_mode(void) {
 
 void test_ram(void) {
   word i;
+  uint8_t mmu_page_current = mmu_page0_ro;
+  __asm__("di");
+  mmu_page0 = VID_MEM_PHYS_ADDR_START >> 14;
   for (i=0; i<0x800; i++) {
-    // cellram[0][i & 0x3ff] = rand();
-    SCREEN[(i & 0x3ff)] = rand();
+    cellram[0][i & 0x3ff] = rand();
+    SCREEN[0][i & 0x3ff] = rand();
   }
+  mmu_page0 = mmu_page_current;
+  __asm__("ei");
 }
 
-void main(void) {
+int main(void) {
+  zos_err_t err = keyboard_init();
+  if(err != ERR_SUCCESS) {
+    goto exit_game;
+  }
+  err = keyboard_flush();
+  if(err != ERR_SUCCESS) {
+    goto exit_game;
+  }
+
+  zvb_peri_text_curs_time = 0;
+
   // assert_coin_status = 1;
   if (COIN1) {
     credits++;
   } else {
     test_ram();
   }
+
   palette = 0;
   // memcpy(tileram, font8x8, sizeof(font8x8));
   draw_playfield();
   attract_mode();
+
+exit_game:
+  err = ioctl(DEV_STDOUT, CMD_RESET_SCREEN, NULL);
+  return err;
 }

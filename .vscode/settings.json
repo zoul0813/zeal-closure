@@ -23,6 +23,7 @@
   "source_location": "cpp",
   "complex": "c",
   "format": "c",
-  "variant": "c"
+  "variant": "c",
+  "__config": "cpp"
 },
 }
