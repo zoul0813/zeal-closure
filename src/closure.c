@@ -302,13 +302,16 @@ char start_pressed(void) {
 
 void declare_winner(byte winner) {
   byte i;
-  for (i=0; i<10; i++) {
-    draw_box(i, i, SCREEN_COL80_HEIGHT - i, SCREEN_COL80_WIDTH - i, BOX_CHARS);
-    msleep(10);
+  uint8_t center_x = SCREEN_COL80_WIDTH/2 - 4;
+  uint8_t center_y = SCREEN_COL80_HEIGHT/2;
+
+  for (i=0; i<center_y - 2; i++) {
+    draw_box(i, i, (SCREEN_COL80_WIDTH - 1) - i, (SCREEN_COL80_HEIGHT - 1) - i, BOX_CHARS);
+    msleep(75);
   }
-  putstring(10,16,"WINNER:");
-  putstring(10,13,"PLAYER ");
-  putch(10+7, 13, CHAR('1')+winner, PE(TEXT_COLOR_MAGENTA, TEXT_COLOR_BLACK));
+  putstring(center_x, center_y - 1, "WINNER:");
+  putstring(center_x, center_y, "PLAYER");
+  putch(center_x+7, center_y, CHAR('1') + winner, PE(TEXT_COLOR_CYAN, TEXT_COLOR_BLACK));
   msleep(1500);
   // TODO: implement "slide_right"
   // slide_right();
@@ -391,6 +394,8 @@ int main(void) {
 
   palette = 0;
   draw_playfield();
+  // declare_winner(1);
+  // while(1) {}
   attract_mode();
 
 exit_game:
