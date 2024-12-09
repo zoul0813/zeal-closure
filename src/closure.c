@@ -6,6 +6,7 @@
 #include "closure.h"
 #include "button_map.h"
 #include "keyboard.h"
+#include "controller.h"
 
 __sfr __banked __at(0x9d) vid_ctrl_status;
 uint8_t mmu_page_current;
@@ -39,7 +40,7 @@ static inline void text_demap_vram(void) {
 }
 
 // PLATFORM DEFINITION
-
+static uint8_t controller_mode = 1;
 uint8_t palette;
 uint16_t input1 = 0;
 uint16_t input1_last = 0;
@@ -266,6 +267,9 @@ void make_move(void) {
   for (i=0; i<frames_per_move; i++) {
     input1_last = input1;
     input1 = keyboard_read();
+    if(controller_mode == 1) {
+      input1 |= controller_read();
+    }
     if(attract && (COIN1 || START1)) return;
     gfx_wait_vblank();
     human_control(&players[0]);
@@ -386,6 +390,21 @@ int main(void) {
   if(err != ERR_SUCCESS) {
     goto exit_game;
   }
+  err = controller_init();
+  // if(err != ERR_SUCCESS) {
+  //   // printf("Failed to init controller: %d", err);
+  // }
+  err = controller_flush();
+  // if(err != ERR_SUCCESS) {
+  //   // printf("Failed to flush controller: %d", err);
+  // }
+  // verify the controller is actually connected
+  uint16_t test = controller_read();
+  // if unconnected, we'll get back 0xFFFF (all buttons pressed)
+  if(test & 0xFFFF) {
+    controller_mode = 0;
+  }
+
 
   // disable cursor
   CURSOR(0);

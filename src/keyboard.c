@@ -46,7 +46,7 @@ uint16_t keyboard_read(void) {
   while(1) {
     zos_err_t err = read(DEV_STDIN, key_buffer, &size);
     if(err != ERR_SUCCESS) {
-      printf("Failed to read DEV_STDIN, clearing keys: %d", err);
+      // printf("Failed to read DEV_STDIN, clearing keys: %d", err);
       KEYBOARD_keys = 0;
       return KEYBOARD_keys;
     }
