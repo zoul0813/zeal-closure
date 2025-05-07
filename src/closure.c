@@ -35,8 +35,8 @@ static inline void text_map_vram(void) {
 }
 
 static inline void text_demap_vram(void) {
-  __asm__("ei");
   mmu_page0 = mmu_page_current;
+  __asm__("ei");
 }
 
 // PLATFORM DEFINITION
