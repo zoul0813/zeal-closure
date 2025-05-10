@@ -406,6 +406,9 @@ int main(void) {
   }
 
 
+  err = ioctl(DEV_STDOUT, CMD_CLEAR_SCREEN, NULL);
+  if(err != ERR_SUCCESS) goto exit_game;
+
   // disable cursor
   CURSOR(0);
 
