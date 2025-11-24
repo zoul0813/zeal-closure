@@ -4,9 +4,7 @@
 #include <zos_time.h>
 #include <zvb_hardware.h>
 #include "closure.h"
-#include "button_map.h"
-#include "keyboard.h"
-#include "controller.h"
+#include <zgdk/input.h>
 
 __sfr __banked __at(0x9d) vid_ctrl_status;
 uint8_t mmu_page_current;
@@ -29,8 +27,8 @@ static inline void gfx_wait_end_vblank(void)
 }
 
 static inline void text_map_vram(void) {
-  mmu_page_current = mmu_page0_ro;
   __asm__ ("di");
+  mmu_page_current = mmu_page0_ro;
   mmu_page0 = VID_MEM_PHYS_ADDR_START >> 14;
 }
 
