@@ -10,7 +10,7 @@ Siege is a clone of [Blockade](https://en.wikipedia.org/wiki/Blockade_(video_gam
 
 ## Controls
 
-* Insert Coin - SNES Y or <kbd>J</kbd>
-* Start Game - SNES B or <kbk>K</kbd> or <kbk>Space</kbd>
 * Move - SNES D-Pad or Arrows/WASD
-* Quit - SNES Select or <kbd>'</kbk> or <kbk>Esc</kbd>
+* Insert Coin - SNES Y or <kbd>A</kbd>
+* Start Game - SNES Start or <kbd>Enter</kbd>
+* Quit - SNES Select or <kbd>'</kbd> or <kbd>Right Shift</kbd>

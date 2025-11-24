@@ -7,3 +7,7 @@ assets/*.zt[spm]
 *.tiled-session
 
 *.zmt
+
+# Zeal Native, ZShell, etc
+zeal.ini
+*.zs
