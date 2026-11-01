@@ -286,7 +286,7 @@ void make_move(void)
     byte i;
     for (i = 0; i < frames_per_move; i++) {
         input1_last = input1;
-        input1      = input_get();
+        input1      = input_read();
         if (state && (COIN1 || START1))
             return;
         gfx_wait_vblank();
